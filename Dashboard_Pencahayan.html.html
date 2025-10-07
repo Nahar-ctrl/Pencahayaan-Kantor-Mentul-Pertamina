@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Analisis Pencahayaan</title>
+    <!-- Load Tailwind CSS CDN untuk styling minimalis dan responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Font Awesome untuk ikon loading -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Menggunakan font Inter untuk tampilan modern */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f8f4; /* Background mint-hijau muda */
+        }
+        /* Mengatur agar header tabel tetap terlihat saat di-scroll */
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        /* Custom scrollbar untuk tampilan yang lebih bersih (Opsional) */
+        .overflow-x-auto::-webkit-scrollbar {
+            height: 8px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb {
+            background-color: #38a169;
+            border-radius: 4px;
+        }
+        .modal {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .loading-spinner {
+            border-top-color: #38a169;
+            border-left-color: #38a169;
+            border-right-color: transparent;
+            border-bottom-color: transparent;
+        }
+    </style>
+    <script>
+        // Konfigurasi warna Tailwind untuk menyesuaikan tone Permenkes
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'permenkes-green': '#006400', 
+                        'permenkes-bg': '#f0fff4', 
+                        'compliant': '#4ade80', 
+                        'non-compliant': '#f87171', 
+                        'warning': '#fbbf24', 
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="p-4 md:p-10">
+
+    <div id="app" class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8 p-6 bg-white shadow-xl rounded-xl border-t-4 border-permenkes-green">
+            <h1 class="text-3xl font-extrabold text-permenkes-green mb-1">Analisis Kepatuhan Pencahayaan Kantor</h1>
+            <p class="text-gray-600">Hasil Verifikasi 20 Lokasi PT Pertamina EP Field Cepu terhadap Standar NAB Permenaker & Permenkes.</p>
+        </header>
+
+        <!-- Data Source & NAB Explanation -->
+        <div class="mb-6 p-4 bg-permenkes-bg rounded-lg border border-permenkes-light/50 shadow-md">
+            <h3 class="text-lg font-semibold text-permenkes-green mb-1">Dasar Acuan NAB (Lux)</h3>
+            <ul class="text-sm text-gray-700 list-disc list-inside ml-4 mt-1">
+                <li>**500 Lux:** Pekerjaan Teliti (Ruang Tindakan, Planning Eval).</li>
+                <li>**300 Lux:** Pekerjaan Halus/Kantor Umum (Administrasi, Staff, Konsultasi).</li>
+                <li>**100 Lux:** Pekerjaan Kasar/Lalu Lintas (Gudang, Koridor).</li>
+            </ul>
+            <div class="mt-4 p-3 bg-green-100 rounded-lg text-sm text-green-800">
+                ✨ **Fitur Gemini AI Aktif:** Klik tombol **'Rencana Aksi'** pada ruangan Non-Compliant untuk mendapatkan rekomendasi perbaikan dan estimasi biaya otomatis.
+            </div>
+        </div>
+        
+        <!-- Summary Cards -->
+        <div id="summary-cards" class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <!-- Cards akan di-inject oleh JavaScript -->
+        </div>
+
+        <!-- Detail Table -->
+        <div class="bg-white shadow-2xl rounded-xl p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Rincian Kepatuhan 20 Lokasi Kerja</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-permenkes-green sticky-header">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider rounded-tl-xl">No. & Ruangan</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Rata-rata Ukur (Lux)</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">NAB Wajib (Lux)</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Status</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Keterangan Kritis</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider rounded-tr-xl">Aksi Gemini AI</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Table rows akan di-inject oleh JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal untuk menampilkan Rencana Aksi Gemini AI -->
+    <div id="action-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 md:p-8 transform transition-all duration-300 scale-95 opacity-0" id="modal-content-wrapper">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h3 class="text-xl font-bold text-permenkes-green flex items-center">
+                    <i class="fas fa-magic mr-2"></i> Rencana Aksi Perbaikan Otomatis
+                </h3>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-800">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <h4 id="modal-room-title" class="text-lg font-semibold text-gray-700 mb-3"></h4>
+            <div id="modal-body" class="max-h-96 overflow-y-auto text-gray-600 space-y-4">
+                <!-- Hasil atau loading spinner akan dimasukkan di sini -->
+                <div id="loading-state" class="text-center py-10 hidden">
+                    <i class="fas fa-spinner fa-spin text-4xl text-permenkes-green"></i>
+                    <p class="mt-3 text-gray-500">Gemini sedang menyusun rencana aksi spesifik...</p>
+                </div>
+                <div id="action-plan-result"></div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- KONFIGURASI GEMINI API ---
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+        const MAX_RETRIES = 5;
+        
+        // Data input dari user (Tabel Verifikasi 20 Lokasi)
+        const rawData = [
+            { no: 1, room: 'Ruang Safety (HSSE)', avgLux: 189.50, category: 'Kantor Umum / Administrasi', nab: 300, status: 'Tidak Memenuhi', note: 'Jauh di bawah batas minimum (Defisit 110.5 Lux)' },
+            { no: 2, room: 'Ruang Security (HSSE)', avgLux: 134.75, category: 'Kantor Umum / Pemantauan', nab: 300, status: 'Tidak Memenuhi', note: 'Jauh di bawah batas minimum (Defisit 165.25 Lux)' },
+            { no: 3, room: 'Ruang Enviro (Workshop)', avgLux: 41.00, category: 'Kantor Umum / Administrasi', nab: 300, status: 'Sangat Tidak Memenuhi', note: 'Tingkat pencahayaan non-aktif (Defisit 259 Lux)' },
+            { no: 4, room: 'Ruang Mech. Supervisor (Workshop)', avgLux: 340.00, category: 'Kantor Umum / Supervisi', nab: 300, status: 'Memenuhi', note: 'Lulus' },
+            { no: 5, room: 'Ruang Mech. Staff (Workshop)', avgLux: 244.25, category: 'Kantor Umum / Administrasi', nab: 300, status: 'Tidak Memenuhi', note: 'Di bawah batas minimum (Defisit 55.75 Lux)' },
+            { no: 6, room: 'Ruang Ram Civil (Workshop)', avgLux: 195.17, category: 'Kantor Umum / Administrasi', nab: 300, status: 'Tidak Memenuhi', note: 'Di bawah batas minimum' },
+            { no: 7, room: 'Ruang Finance (GU L1)', avgLux: 263.00, category: 'Kantor Umum / Administrasi', nab: 300, status: 'Tidak Memenuhi', note: 'Sedikit di bawah batas minimum' },
+            { no: 8, room: 'Ruang Depan Finance (GU L1)', avgLux: 356.80, category: 'Kantor Umum / Administrasi', nab: 300, status: 'Memenuhi', note: 'Lulus' },
+            { no: 9, room: 'Ruang HC (GU L1)', avgLux: 304.00, category: 'Kantor Umum / Administrasi', nab: 300, status: 'Memenuhi', note: 'Lulus' },
+            { no: 10, room: 'Ruang Relation (GU L1)', avgLux: 85.75, category: 'Kantor Umum / Administrasi', nab: 300, status: 'Sangat Tidak Memenuhi', note: 'Tingkat bahaya tinggi, jauh di bawah standar kantor' },
+            { no: 11, room: 'Ruang ICT (GU L1)', avgLux: 236.80, category: 'Kantor Umum / Teknis', nab: 300, status: 'Tidak Memenuhi', note: 'Di bawah batas minimum' },
+            { no: 12, room: 'Ruang Dokter (Klinik)', avgLux: 106.00, category: 'Kantor Umum / Konsultasi', nab: 300, status: 'Sangat Tidak Memenuhi', note: 'Tidak memadai untuk konsultasi detail' },
+            { no: 13, room: 'Ruang Tindakan (Klinik)', avgLux: 420.67, category: 'Pekerjaan Teliti / Prosedur', nab: 500, status: 'Tidak Memenuhi', note: 'Tidak memadai untuk pekerjaan sangat teliti (Defisit 79.33 Lux)' },
+            { no: 14, room: 'Ruang Farmasi (Klinik)', avgLux: 230.00, category: 'Kantor Umum / Administrasi', nab: 300, status: 'Tidak Memenuhi', note: 'Di bawah batas minimum' },
+            { no: 15, room: 'Ruang Admin (Klinik)', avgLux: 291.67, category: 'Kantor Umum / Administrasi', nab: 300, status: 'Tidak Memenuhi', note: 'Sedikit di bawah batas minimum' },
+            { no: 16, room: 'Ruang Planning Eval (GU L2)', avgLux: 503.75, category: 'Pekerjaan Teliti / Analisis', nab: 500, status: 'Memenuhi', note: 'Lulus, melebihi batas minimal pekerjaan teliti' },
+            { no: 17, room: 'Ruang Prod. Operation (GU L2)', avgLux: 259.86, category: 'Kantor Umum / Operasional', nab: 300, status: 'Tidak Memenuhi', note: 'Di bawah batas minimum' },
+            { no: 18, room: 'Ruang Manager (GU L2)', avgLux: 349.50, category: 'Kantor Umum / Supervisi', nab: 300, status: 'Memenuhi', note: 'Lulus' },
+            { no: 19, room: 'Kantor Warehouse (SCM)', avgLux: 196.00, category: 'Kantor Umum / Administrasi', nab: 300, status: 'Tidak Memenuhi', note: 'Di bawah batas minimum' },
+            { no: 20, room: 'Gudang Warehouse (SCM)', avgLux: 330.36, category: 'Pekerjaan Kasar / Jalan', nab: 100, status: 'Memenuhi', note: 'Lulus, pencahayaan sangat baik untuk area ini' },
+        ];
+
+
+        // Fungsi untuk memanggil Gemini API dengan retry mechanism
+        async function callGeminiApi(payload, retries = 0) {
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorBody = await response.json();
+                    throw new Error(`API Error: ${response.status} - ${JSON.stringify(errorBody)}`);
+                }
+
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (!text) {
+                     // Handle case where text is empty but response is OK (e.g., filtered content)
+                    throw new Error("Respons API Gemini tidak mengandung teks yang valid.");
+                }
+
+                return text;
+
+            } catch (error) {
+                if (retries < MAX_RETRIES) {
+                    const delay = Math.pow(2, retries) * 1000; // Exponential backoff: 1s, 2s, 4s, 8s...
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return callGeminiApi(payload, retries + 1);
+                } else {
+                    console.error("Gagal memanggil Gemini API setelah beberapa kali coba:", error);
+                    throw new Error("Gagal menghasilkan rencana aksi. Silakan coba lagi nanti.");
+                }
+            }
+        }
+
+        // Fungsi yang dipanggil saat tombol aksi ditekan
+        async function generateActionPlan(item) {
+            openModal(item.room);
+            const loadingState = document.getElementById('loading-state');
+            const resultDiv = document.getElementById('action-plan-result');
+            
+            loadingState.classList.remove('hidden');
+            resultDiv.innerHTML = '';
+
+            const systemPrompt = `Anda adalah seorang ahli Keselamatan dan Kesehatan Kerja (K3) dan insinyur pencahayaan ergonomis. Tugas Anda adalah menganalisis data pencahayaan kantor yang tidak memenuhi Nilai Ambang Batas (NAB) dan memberikan 3 hingga 5 rekomendasi tindakan perbaikan yang sangat spesifik, terukur, dan praktis, termasuk perkiraan jenis produk (misalnya: 'Lampu LED 40W 4000K') dan estimasi level biaya (Biaya Rendah, Biaya Sedang, Biaya Tinggi) untuk pengajuan anggaran.`;
+            
+            const userQuery = `Ruangan ini ${item.room} memiliki rata-rata pencahayaan ${item.avgLux.toFixed(2)} Lux, padahal NAB wajibnya adalah ${item.nab} Lux. Keterangan kritisnya adalah: "${item.note}". Berdasarkan data tersebut, berikan 3-5 langkah aksi perbaikan yang detail dan spesifik, serta estimasi level biayanya. Format jawaban Anda harus berupa daftar bernomor (markdown list).`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            try {
+                const planText = await callGeminiApi(payload);
+                
+                // Konversi markdown list ke HTML list untuk tampilan yang rapi
+                const htmlContent = planText
+                    .split('\n')
+                    .map(line => {
+                        if (line.match(/^\s*\d+\.\s/)) { // Cek jika baris adalah list bernomor
+                            return `<li>${line.replace(/^\s*\d+\.\s*/, '')}</li>`;
+                        }
+                        return line;
+                    })
+                    .join('');
+
+                resultDiv.innerHTML = `<ul class="list-decimal list-inside space-y-2">${htmlContent}</ul>`;
+
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="text-red-500 font-semibold">Error: ${error.message}</p><p class="mt-2 text-sm">Gagal menyusun rencana aksi. Pastikan koneksi Anda stabil atau coba lagi.</p>`;
+            } finally {
+                loadingState.classList.add('hidden');
+            }
+        }
+
+        // --- FUNGSI MODAL (POPUP) ---
+        
+        function openModal(roomName) {
+            const modal = document.getElementById('action-modal');
+            const modalContentWrapper = document.getElementById('modal-content-wrapper');
+            const modalTitle = document.getElementById('modal-room-title');
+            
+            modalTitle.textContent = `Rencana Aksi untuk: ${roomName}`;
+            modal.classList.remove('hidden');
+            
+            // Trigger transition effects
+            setTimeout(() => {
+                modal.style.opacity = '1';
+                modalContentWrapper.style.transform = 'scale(1)';
+                modalContentWrapper.style.opacity = '1';
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('action-modal');
+            const modalContentWrapper = document.getElementById('modal-content-wrapper');
+
+            modalContentWrapper.style.transform = 'scale(0.95)';
+            modalContentWrapper.style.opacity = '0';
+            modal.style.opacity = '0';
+            
+            // Hide modal after transition ends
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('action-modal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+
+        // --- FUNGSI RENDERING UTAMA ---
+        
+        function renderDashboard() {
+            const data = rawData;
+            
+            // Hitungan Summary
+            const totalRooms = data.length;
+            const compliantRooms = data.filter(item => item.status === 'Memenuhi').length;
+            const nonCompliantRooms = totalRooms - compliantRooms;
+            const complianceRate = (compliantRooms / totalRooms) * 100;
+
+            // 1. Render Summary Cards
+            const summaryCardsContainer = document.getElementById('summary-cards');
+            summaryCardsContainer.innerHTML = `
+                ${createSummaryCard("Total Lokasi Analisis", totalRooms, 'text-gray-800', 'bg-permenkes-bg', 'Lokasi')}
+                ${createSummaryCard("Lokasi Memenuhi NAB", compliantRooms, 'text-compliant', 'bg-green-50', 'Lokasi')}
+                ${createSummaryCard("Lokasi Tidak Memenuhi NAB", nonCompliantRooms, 'text-non-compliant', 'bg-red-50', 'Lokasi')}
+                ${createSummaryCard("Tingkat Kepatuhan", complianceRate, 'text-permenkes-green', 'bg-white', '%')}
+            `;
+
+            // 2. Render Detail Table
+            const dataTableBody = document.getElementById('data-table-body');
+            dataTableBody.innerHTML = data.map(item => createTableRow(item)).join('');
+        }
+
+        // Fungsi pembantu untuk membuat Summary Card
+        function createSummaryCard(title, value, textColorClass, bgColorClass, unit) {
+            return `
+                <div class="p-6 ${bgColorClass} rounded-xl shadow-lg transition duration-300 hover:shadow-xl">
+                    <p class="text-sm font-medium text-gray-500 mb-1">${title}</p>
+                    <p class="text-4xl font-extrabold ${textColorClass}">${value.toFixed(title.includes("Tingkat") ? 1 : 0)} ${unit}</p>
+                </div>
+            `;
+        }
+
+        // Fungsi pembantu untuk membuat baris tabel
+        function createTableRow(item) {
+            let statusText = item.status;
+            let statusClass;
+            let actionButton;
+
+            // Logika Status Kepatuhan
+            if (item.status === 'Memenuhi') {
+                statusClass = 'bg-compliant text-green-900 ring-compliant';
+                actionButton = `<button class="text-gray-400 cursor-not-allowed text-sm p-1.5 rounded-lg border border-gray-300 bg-gray-100">Lulus</button>`;
+            } else if (item.status === 'Sangat Tidak Memenuhi') {
+                statusClass = 'bg-red-200 text-red-800 ring-red-500';
+                actionButton = `<button onclick='generateActionPlan(${JSON.stringify(item)})' class="text-white bg-red-600 hover:bg-red-700 font-bold text-xs p-1.5 rounded-lg shadow-md transition duration-150 transform hover:scale-105">✨ Rencana Aksi</button>`;
+            } else { // Tidak Memenuhi
+                statusClass = 'bg-warning text-yellow-900 ring-warning';
+                actionButton = `<button onclick='generateActionPlan(${JSON.stringify(item)})' class="text-permenkes-green bg-green-200 hover:bg-green-300 font-bold text-xs p-1.5 rounded-lg shadow-md transition duration-150 transform hover:scale-105">✨ Rencana Aksi</button>`;
+            }
+
+            return `
+                <tr class="hover:bg-gray-50 transition duration-150">
+                    <td class="px-4 py-3 text-sm font-medium text-gray-900">${item.no}. ${item.room}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700 font-bold">${item.avgLux.toFixed(2)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">${item.nab}</td>
+                    <td class="px-4 py-3 text-center text-sm">
+                        <span class="inline-flex items-center px-3 py-1.5 rounded-full font-semibold ${statusClass} ring-1 ring-inset ring-opacity-50 shadow-sm">
+                            ${statusText}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-600">${item.note}</td>
+                    <td class="px-4 py-3 text-center text-sm">
+                        ${actionButton}
+                    </td>
+                </tr>
+            `;
+        }
+
+        // Jalankan fungsi saat dokumen siap
+        document.addEventListener('DOMContentLoaded', renderDashboard);
+    </script>
+</body>
+</html>
